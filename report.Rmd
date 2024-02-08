@@ -1,0 +1,456 @@
+---
+title: "StatComp Project 1: Simulation and sampling"
+author: "Conor Walsh (s1949139)"
+output:
+  html_document:
+    number_sections: yes
+  pdf_document:
+    number_sections: yes
+header-includes:
+  - \newcommand{\bm}[1]{\boldsymbol{#1}}
+  - \newcommand{\mat}[1]{\begin{bmatrix}#1\end{bmatrix}}
+---
+
+```{r setup, include = FALSE}
+# Modify this setup code chunk to set options
+# or add extra packages etc if needed.
+# See the project instructions for more details
+# on what code to show, and where/how.
+
+# Set default code chunk options
+knitr::opts_chunk$set(
+  echo = TRUE,
+  eval = TRUE
+)
+
+suppressPackageStartupMessages(library(tidyverse))
+theme_set(theme_bw())
+suppressPackageStartupMessages(library(StatCompLab))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(mvtnorm))
+
+# To give the same random number sequence every time the document is knit:ed,
+# making it easier to discuss the specific numbers in the text:
+set.seed(12345L)
+```
+
+```{r code=readLines("code.R"), eval=TRUE, echo=FALSE}
+# Do not change this code chunk
+# Load function definitions
+source("code.R")
+```
+
+
+# Confidence Interval Approximation Assessment
+
+## The Poisson Model, Joint Probability Mass Function & Parametrisation:
+
+We consider the Poisson model for observations $\textbf{y} = {y_1, ..., y_n}$:
+
+${y_i}$ $\sim$ Poisson($\lambda$), independent for $i = 1, ..., n$
+
+that has joint probability mass function
+
+$$p(\textbf{y}|\lambda) = \exp(-n\lambda)\prod^{n}_{i = 1}\frac{\lambda^{y_i}}{y_i !}$$
+
+In this section of the report we consider the following parametrisation from Lab 4:
+
+$$\theta = \lambda$$ and $$\theta^{\hat{}}_{ML} = \frac{1}{n}\sum^{n}_{i = 1}y_i = \bar{y}$$
+## Interval Coverage Estimation:
+
+In order to successfully perform interval coverage estimation over a sample of size $n$, we work in R by defining a function called `estimate_coverage()`. This function will be used to assess the sensitivity of the results relative to the precise values of $\lambda$ and $n$. This can be successfully implemented by running the defined function for different combinations of the model parameters $\lambda$ and $n$, with fixed values of $N = 10000$, alpha = $0.1$ and sample size $n = 250$.
+
+```{r estimate-coverage-looping-code, eval=FALSE, echo=FALSE}
+
+# Set sample size n = 250:
+
+n <- 1:250
+
+# Create an empty list:
+
+estimate_cov_varn <- list()
+
+for(i in 1:250){
+  
+  # Implement for loop over the sample size and appends values to the empty list
+  # defined as above:
+  
+  # Fix values N = 10000 and alpha = 0.1 when calling the function:
+  
+  coverage_estimation <- estimate_coverage(CI, 10000, 0.1, i, 3)
+  
+  # Append the values into the list:
+  
+  estimate_cov_varn <- c(estimate_cov_varn, coverage_estimation)
+}
+```
+
+
+The results of estimated coverage over the designated sample size, for the fixed values above can be shown in the following two plots below. The first plot presents the results as a function of $\lambda$ for fixed $n = 2$ and the second plot presents the results as a function of $n$ for fixed $\lambda = 3$.
+
+```{r Q1-estimated_coverage-first-plot, eval = TRUE, echo = FALSE}
+
+# Create an empty list:
+
+newlist = list()
+
+# Perform estimation coverage over the designated sample size using a for loop and the estimate_coverage() function, with fixed argument values N = 10000, a = 0.1, n = 2 and lambda as a function of n:
+
+for(i in 1:250){
+  ec_results_1 = estimate_coverage(CI, 10000, 0.1, 2, i)
+  
+  # Append the result values to the empty list defined above:
+  
+  newlist <- c(newlist, ec_results_1)
+}
+
+# Use cbind() to combine the vector of sample size and the estimation coverage results into a dataframe:
+
+dataframe1 <- cbind(seq(1, 250), newlist)
+
+# Name the columns of dataframe1:
+
+colnames(dataframe1) <- c("Lambda", "Estimate_Coverage_Of_CI")
+
+dataframe1 <- as.data.frame(dataframe1)
+
+# Use lapply() to apply the function over the created dataset
+# Convert vector values using as.numeric to prevent NAs in data:
+
+dataframe1 <- lapply(dataframe1, as.numeric)
+
+# Ensure that dataframe1 behaves properly as a dataset:
+
+dataframe1 <- as.data.frame(dataframe1)
+
+# Plot the data from dataframe1 using functions from the package ggplot2:
+
+ggplot(dataframe1, aes(Lambda, Estimate_Coverage_Of_CI)) + 
+  
+  geom_line() + 
+  
+  labs(title = "Plot 1; Plotting Estimate Coverage as a function of Lambda for fixed n = 2",
+       
+       x = "Values of Lambda",
+       
+       y = "Coverage of 90% CI") + 
+  
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r estimated-coverage-second-plot, eval=TRUE, echo=FALSE}
+
+# For the second plot the process is very similar, except for similar alterations in the implementation of estimate_coverage():
+
+# Create an empty list:
+
+newlist2 = list()
+
+# Perform estimation coverage over the designated sample size using a for loop and the estimate_coverage() function, with fixed argument values N = 10000, a = 0.1, n as a function of lambda and lambda = 3:
+
+for(i in 1:250){
+  ec_results_2 = estimate_coverage(CI, 10000, 0.1, i, 3)
+  
+  # Append the result values to the empty list defined above:
+  
+  newlist2 <- c(newlist2, ec_results_2)
+}
+
+# Use cbind() to combine the vector of sample size and the estimation coverage results into a second dataframe:
+
+dataframe2 <- cbind(seq(1, 250), newlist2)
+
+# Name the columns of dataframe1:
+
+colnames(dataframe2) <- c("vals_of_n", "Estimate_Coverage_Of_CI")
+
+# Ensure that dataframe1 behaves properly as a dataset:
+
+dataframe2 <- as.data.frame(dataframe2)
+
+# Use lapply() to apply the function over the created dataset
+# Convert vector values using as.numeric to prevent NAs in data:
+
+dataframe2 <- lapply(dataframe2, as.numeric)
+
+# Ensure that dataframe1 behaves properly as a dataset:
+
+dataframe2 <- as.data.frame(dataframe2)
+
+# Plot the data from dataframe1 using functions from the package ggplot2:
+
+ggplot(dataframe2, aes(vals_of_n, Estimate_Coverage_Of_CI)) + 
+  
+  geom_line() + 
+  
+  labs(title = "Plot 2; Plotting estimate coverage as a function of n for fixed lambda = 3",
+       
+       x = "Sample size (n)",
+       
+       y = "Coverage of 90% CI") + 
+  
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Discussion Of Interval Coverage Estimation Plots:
+
+Upon viewing the two separate plots, it is clear that there are slight differences in the plots regarding the manner in which the coverage of the intervals achieves the desired 90% confidence level.
+
+Upon examining the first plot, where estimate coverage is plotted as a function of $\lambda$ for fixed $n = 2$, we can see that the desired 90% confidence level is not fully achieved until approximately $\lambda = 5$, with extreme oscillation in the coverage of the CI until approximately $\lambda = 38$, at which the oscillation stabilises around 90% for the rest of the values of lambda given in the data.
+
+Looking at the second plot gives a slightly different view of the data, where the estimate coverage is plotted as a function of $n$ for fixed $\lambda = 3$. We can see that the desired 90% confidence level is achieved almost instantly and the oscillation shown on the plot is both less prevalent and less unstable while covering the designated sample size.
+
+There are several reasons as to why the coverage of the CI does not reach the desired levels for certain $\lambda$ values for the first plot. One such reason is that the fixed sample size $n = 2$ is too small to provide reliable results for estimate coverage for the initial values of lambda. A way to prevent this from happening in future would be to use larger fixed values of $n$ so that the coverage of the CI achieves the desired 90% for as many values of $\lambda$ as possible.
+
+# 3D Printer Materials Prediction
+
+In this section of the report we conduct our investigation of parameters of a Bayesian statistical model of material use in a 3D printer. From the dataset in question, $\texttt{filament1}$, we consider the two following columns, $\texttt{CAD_Weight}$ and $\texttt{Actual_Weight}$, which give us the object weight (in grams) that the CAD (Computer Aided Design) software calculated, and the actual weight of the object (in grams) after printing respectively. The printer operator in question follows a linear model where the variance increases with squares of CAD_Weight. This allows us to define $\texttt{CAD_Weight}$ for observations $i$ by $x_i$ and the corresponding $\texttt{Actual_Weight}$ by $y_i$, and thus the model can be defined as:
+
+$$
+\begin{aligned}
+y_i \sim N(\beta_1 + \beta_2{x_i}, \beta_3 + \beta_4{x_i}^2)
+\end{aligned}
+$$
+In order to maintain a positive variance, the parametrisation $\boldsymbol{\theta}$ = $[\theta_1, \theta_2, \theta_3, \theta_4]$ = $[\beta_1, \beta_2, log(\beta_3), log(\beta_4)]$ is introduced and the printer operator assigns the following independent prior distributions:
+
+$$
+\theta_1 \sim \text{N}(0, \gamma_1),
+$$
+$$
+\theta_2 \sim \text{N}(1, \gamma_2),
+$$
+
+$$
+\theta_3 \sim \text{LogExp}(\gamma_3),
+$$
+$$
+\theta_4 \sim \text{LogExp}(\gamma_4),
+$$
+where LogExp($a$) denotes the logarithm of an exponentially distributed random variable with rate parameter $a$ and the $\boldsymbol{\gamma} = [\gamma_1, \gamma_2, \gamma_3, \gamma_4]$ are all positive parameters. Below lies the plotted data of CAD_Weight against Actual_Weight from the $\texttt{filament1}$ dataset:
+
+
+```{r plot-filament1-data, eval=TRUE, echo=FALSE}
+
+# Reassign variable names:
+
+CAD_Weight <- filament1$CAD_Weight
+
+Actual_Weight <- filament1$Actual_Weight
+
+# Create a dataframe:
+
+filament_data <- data.frame(CAD_Weight, Actual_Weight)
+
+# Plot the data using ggplot:
+
+ggplot(filament_data) + geom_point(aes(CAD_Weight, Actual_Weight)) + 
+  
+  labs(title = "Plotting CAD Weight Against Actual Weight",
+       
+       x = "CAD Weight",
+       
+       y = "Actual Weight") + 
+  
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Log-Prior Density:
+
+In order to obtain the log-prior density for $\theta$, we evaluate the logarithm of the joint-prior density $p(\boldsymbol{\theta})$ using the prior distributions defined above for $\theta_1, \theta_2, \theta_3, \theta_4$:
+
+$$
+\begin{aligned}
+\text{log}(p(\boldsymbol{\theta})) &= \sum_{i = 1}^{4}\text{log}(p(\theta_i))
+= \text{log}(p(\theta_1)p(\theta_2)p(\theta_3)p(\theta_4)) = \text{log}(p(\theta_1)) + \text{log}(p(\theta_2)) + \text{log}(p(\theta_3)) + \text{log}(p(\theta_4))
+\end{aligned}
+$$
+## Observational Log-Likelihood & Log-Posterior Density:
+
+Now by combining this expression and the expression for the $\textit{observational}$ log-likelihood, it is possible to derive an expression for the logarithm of the posterior density, $p(\boldsymbol{\theta}|\textbf{y}),$ excluding an unevaluated normalisation constant. This process is fairly straightforward and is derived from:
+
+$$
+p(\boldsymbol{\theta}|\textbf{y}) = \frac{p(\textbf{y}|\boldsymbol{\theta})p(\boldsymbol{\theta})}{p(\textbf{y})} \propto p(\textbf{y}|\boldsymbol{\theta})p(\boldsymbol{\theta})
+$$
+
+Taking the log of both sides gives:
+
+$$
+\text{log}(p(\boldsymbol{\theta}|\textbf{y})) = \text{log}(p(\boldsymbol{\theta})) + p(\textbf{y}|\boldsymbol{\theta}) - \text{log}(p(\textbf{y})) \propto \text{log}(p(\boldsymbol{\theta})p(\textbf{y}|\boldsymbol{\theta})),
+$$
+where $\text{log}(p(\textbf{y}))$ acts as the unevaluated normalisation constant. However regardless of logarithmic form or not, $p(\boldsymbol{\theta}|\textbf{y})$ is often analytically intractible and thus is difficult to work with. One way to counter any potential problems is to introduce the method of importance sampling, which shall be discussed in further detail later in the report.
+
+## Posterior Mode, Gaussian Approximation & Multivariate Normal Approximation:
+
+Next we discuss methods of obtaining the posterior mode, $\mu$ from the log-posterior density function. One such way of achieving this can be implemented in R, by applying the `optim` function to maximise the log-posterior density function in a function named `posterior_mode`. This returns the posterior mode $\mu$, the Hessian at $\mu$ and the inverse of the negated Hessian $\textbf{S}$ as shown in the R output below:
+
+
+```{r gaussian-approximation-code-q2.5, eval=TRUE, echo=FALSE}
+
+# Apply the function `posterior_mode` for the vector of gamma parameters [1,1,1,1] and the vector of theta parameters [0,0,0,0]
+
+gaussian_approx <- posterior_mode(theta_start = c(0,0,0,0), x, y, params = c(1,1,1,1))
+
+gaussian_approx
+```
+
+Assuming all $\gamma_i = 1$ for $i = 1, 2, 3, 4$ and working from the initial value of $\boldsymbol{\theta} = \textbf{0}$, `posterior_mode` will give the following outputs. This output can be put to further use as it is now possible to obtain an expression for a Multivariate Normal Approximation $N(\mu, S)$ for the posterior distribution of $\boldsymbol{\theta}$, which is given by the outputs mode and S above for $\mu$ and $S$ respectively.
+
+# Importance Sampling:
+
+```{r normalised-log-weights-q2.6, eval=FALSE, echo=FALSE}
+
+# Utilise `do_importance`to compute an importanc sample of
+
+l <- do_importance(1000, gaussian_approx$mode, unlist(gaussian_approx$S), 
+                   filament1$CAD_Weight, 
+                   filament1$Actual_Weight, params = c(1,1,1,1))
+
+normalised_log_weights <- l$log_weights
+
+sum(exp(normalised_log_weights))
+```
+
+In this section we will discuss importance sampling in further detail, as briefly alluded to earlier. 
+
+Importance sampling is used to compute an approximation to the posterior density, which as stated before can be tricky to work with from an analytical perspective. By drawing independent samples on $\theta_1, ..., \theta_N$. from $\bar{p}(\boldsymbol{\theta}|\textbf{y})$ and computing $\textit{weights}, \bar{w_k} = \frac{p(\boldsymbol{\theta_k})p(\textbf{y}|\boldsymbol{\theta_k})}{\bar{p}(\boldsymbol{\theta_k}|\textbf{y})}, \text{for} \space{} k = 1, ..., N$, it is possible to reduce the interference of Monte Carlo variance by significant proportion. The weights are then maximised as they are otherwise difficult to represent in the computer, hence we work with
+
+$$
+w_k = \text{log}(\bar{w_k}) - \text{log}\sum^{n}_{k = 1}\exp(\text{log}(\bar{w_k})) 
+$$
+From this, we are now able to compute approximate posterior quantiles and the posterior mean, using a weighted average of $\theta_1, ..., \theta_N$, where the weight for $\theta_k$ is $w_k$. The expression for the posterior mean is given below:
+
+$$\mathbb{E}(\boldsymbol{\theta}|\textbf{y}) = \sum^{N}_{k = 1}w_k{\theta_k}$$
+Next, we will attempt to explore the relationship between weighted and unweighted CDFs for each $\beta$ parameter, as well as a brief discussion on credible intervals. Below are four different plots detailing the similarities and differences in the two CDFs when plotted alonside each other, where each plot corresponds to its matching $\beta$ parameter:
+
+
+```{r importance-sampling-plotting-1, eval=TRUE, echo=FALSE}
+
+# Compute an importance sample of 10,000 using do_importance:
+
+importance_plotting <- do_importance(10000, gaussian_approx$mode, unlist(gaussian_approx$S), 
+                   filament1$CAD_Weight, 
+                   filament1$Actual_Weight, params = c(1,1,1,1))
+
+# Compute new unnormalised weights:
+
+weights <- exp(importance_plotting$log_weights - max(importance_plotting$log_weights))
+
+# Assign variable names to each column of the dataset importance_plotting, each one corresponding to its matching beta paramter:
+
+beta1 <- importance_plotting[,1]
+beta2 <- importance_plotting[,2]
+beta3 <- importance_plotting[,3]
+beta4 <- importance_plotting[,4]
+
+# Create four data frames for each of the beta parameters and ensure that they behaves as dataframes:
+
+beta1 <- as.data.frame(beta1)
+beta1 <- data.frame(beta1 = importance_plotting$beta1, weights = weights)
+
+beta2 <- as.data.frame(beta2)
+beta2 <- data.frame(beta2 = importance_plotting$beta2, weights = weights)
+
+beta3 <- as.data.frame(beta3)
+beta3 <- data.frame(beta3 = importance_plotting$beta3, weights = weights)
+
+beta4 <- as.data.frame(beta4)
+beta4 <- data.frame(beta4 = importance_plotting$beta4, weights = weights)
+
+# Plot the empirical weighted CDFs against the non-weighted CDFs for each of the four beta parameters:
+
+# beta1:
+
+ggplot(beta1) + stat_ewcdf(aes(beta1, weights = weights, col = "Importance")) +
+  
+  stat_ecdf(aes(beta1, col = "Unweighted")) + 
+  
+  labs(title = "Plotting weighted vs unweighted CDFs for beta1",
+       
+       x = "beta1",
+       
+       y = "CDF") +
+  
+  theme(plot.title = element_text(hjust = 0.5))
+
+# beta2:
+
+ggplot(beta2) + stat_ewcdf(aes(beta2, weights = weights, col = "Importance")) +
+  
+  stat_ecdf(aes(beta2, col = "Unweighted")) + 
+  
+  labs(title = "Plotting weighted vs unweighted CDFs for beta2",
+       
+       x = "beta2",
+       
+       y = "CDF") + 
+  
+  theme(plot.title = element_text(hjust = 0.5))
+
+# beta3:
+
+ggplot(beta3) + stat_ewcdf(aes(beta3, weights = weights, col = "Importance")) +
+  
+  stat_ecdf(aes(beta3, col = "Unweighted")) + 
+  
+  labs(title = "Plotting weighted vs unweighted CDFs for beta3",
+       
+       x = "beta3",
+       
+       y = "CDF") + 
+  
+  theme(plot.title = element_text(hjust = 0.5))
+
+# beta4:
+
+ggplot(beta4) + stat_ewcdf(aes(beta4, weights = weights, col = "Importance")) +
+  
+  stat_ecdf(aes(beta4, col = "Unweighted")) + 
+  
+  labs(title = "Plotting weighted vs unweighted CDFs for beta4",
+       
+       x = "beta",
+       
+       y = "CDF") + 
+  
+  theme(plot.title = element_text(hjust = 0.5))
+```
+## Discussion Of Plots Of Weighted CDFs vs Non-Weighted CDFs:
+
+As shown on the plots above for each $\beta$ parameter, the trends for both empirically weighted and unweighted CDFs follow similar trajectories, while not identical to one another. This may indicate that the importance sampling method provided in the report is not optimal and could be improved further, which may potentially indicate code errors for the plots displayed.
+
+We will also look to explore credible intervals as a Bayesian concept for each parameter as a set (in this case an interval) such that at 90% level, $P_{\theta \sim p(\theta | \textbf{y})}(\theta \in C_{\boldsymbol{\theta}}(\textbf{y})) \geq 0.9$, where $C_{\boldsymbol{\theta}}(\textbf{y}))$ represents the credible interval. We can compute credible intervals at 90% level for each for the model parameters, based on the importance sample we have been working with using the `wquantile` function in R. The R output below presents these credible intervals as such, with each of the outputs matching its corresponding credible interval for $\beta_1, \beta_2, \beta_3, \beta_4$:
+
+```{r credible-intervals, eval=TRUE, echo=FALSE}
+
+# Use wquantile to compute 90% credible intervals for each beta parameter:
+
+beta1_interval <- wquantile(beta1$beta1, probs = c(0.05, 0.95), weights = weights)
+
+beta1_interval
+
+beta2_interval <- wquantile(beta2$beta2, probs = c(0.05, 0.95), weights = weights)
+
+beta2_interval
+
+beta3_interval <- wquantile(beta3$beta3, probs = c(0.05, 0.95), weights = weights)
+
+beta3_interval
+
+beta4_interval <- wquantile(beta4$beta4, probs = c(0.05, 0.95), weights = weights)
+
+beta4_interval
+```
+
+## Further Discussion Of Results:
+
+We can also examine the results further by examining from further points of view, i.e. from a sampling perspective as well as that of the application of the 3D printer:
+
+From a sampling perspective, one such way to ensure the results are as reliable as possible is to repeat the process using a different method for importance sampling, such as Monte Carlo integration. Upon comsarinmg the  outcomes from each method of the sampling, it would then be possible to determine which methods are most and least effective at providing reliable data for importance sampling.
+
+From the angle of the 3D printer, it may be possible that the proportion of the relative error may be larger than what was anticipated in the feedback. This would require further investigation to determine the overall effect that such unanticipated errors may have on the sampling as a whole, but could prevent further error in future experiments where different methods of importance sampling are applied.
+
+# Code Appendix: Function Definitions
+
+```{r code=readLines("code.R"), eval=FALSE, echo=TRUE}
+# Do not change this code chunk
+```
